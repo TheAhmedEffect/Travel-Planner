@@ -1,0 +1,230 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+#define M 10
+#define INF INT_MAX
+
+struct Graph {
+    string nodes[M];
+    int d[M][M];
+    int time[M][M];
+    int cost[M][M];
+};
+
+void initializeGraph(Graph &g, const string &f) {
+    ifstream file(f);
+    if (!file) {
+        cerr << "Error opening file!" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i=0; i<M; i++) {
+        file >> g.nodes[i];
+    }
+
+    auto readMatrix = [&](int matrix[M][M]) {
+        for (int i=0; i<M; i++) {
+            for (int j=0; j<M; j++) {
+                string buffer;
+                file >> buffer;
+                if (buffer == "INF") {
+                    matrix[i][j] = INF;
+                } else {
+                    matrix[i][j] = stoi(buffer);
+                }
+            }
+        }
+    };
+    
+    readMatrix(g.d);
+    readMatrix(g.time);
+    readMatrix(g.cost);
+
+    file.close();
+}
+
+int findIndex(Graph &g, string name) {
+    for (int i=0; i<M; i++) {
+        if (g.nodes[i] == name) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void dijkstra(Graph &g, int src, int dest) {
+    int dist[M];
+    int p[M];
+    bool vd[M] = {false};
+
+    for (int i=0; i<M; i++) {
+        dist[i] = INF;
+        p[i] = -1;
+    }
+    
+    dist[src] = 0;
+
+    for (int i=0; i<M-1; i++){
+        int minDist = INF;
+        int u = -1;
+        for (int j=0; j<M; j++) {
+            if (!vd[j] && dist[j] < minDist) {
+                minDist = dist[j];
+                u = j;
+            }
+        }
+
+        if (u==-1){
+            break;
+        }
+
+        vd[u] = true;
+
+        for (int v=0; v<M; v++) {
+            if (!vd[v] && g.d[u][v] != INF && dist[u] + g.d[u][v] < dist[v]) {
+                dist[v] = dist[u] + g.d[u][v];
+                p[v] = u;
+            }
+        }
+    }
+
+    if (dist[dest] == INF) {
+        cout << "No path exists from " << g.nodes[src] << " to " << g.nodes[dest] << ".\n";
+    }
+    
+    else{
+        cout << "Shortest distance from " << g.nodes[src] << " to " << g.nodes[dest] << ": " << dist[dest] << "\n";
+        cout << "Path: ";
+        int current = dest;
+        while (current != -1) {
+            cout << g.nodes[current] << " ";
+            current = p[current];
+        }
+        cout << "\n";
+    }
+}
+
+void bellmanFord(Graph &g, int src, int dest) {
+    int t[M], p[M];
+    
+    for (int i=0; i<M; i++) {
+        t[i] = INF;
+        p[i] = -1;
+    }
+
+    t[src] = 0;
+
+    for (int i=0; i<M-1; i++) {
+        for (int u=0; u<M; u++) {
+            for (int v=0; v<M; v++) {
+                if (g.time[u][v] != INF && t[u] + g.time[u][v] < t[v]) {
+                    t[v] = t[u] + g.time[u][v];
+                    p[v] = u;
+                }
+            }
+        }
+    }
+
+    if (t[dest] == INF) {
+        cout << "No path exists from " << g.nodes[src] << " to " << g.nodes[dest] << ".\n";
+    } else {
+        cout << "Least travel time from " << g.nodes[src] << " to " << g.nodes[dest] << ": " << t[dest] << "\n";
+        cout << "Path: ";
+        int c = dest;
+        while (c != -1) {
+            cout << g.nodes[c] << " ";
+            c = p[c];
+        }
+        cout << "\n";
+    }
+}
+
+void floydWarshall(Graph &g, int src, int dest) {
+    int c[M][M];
+    int n[M][M];
+
+    for (int i=0; i<M; i++) {
+        for (int j=0; j<M; j++) {
+            c[i][j] = g.cost[i][j];
+        }
+    }
+
+    for (int i=0; i<M; i++) {
+        for (int j=0; j<M; j++) {
+            if (g.cost[i][j] != INF && i != j) {
+                n[i][j] = j;
+            } else {
+                n[i][j] = -1;
+            }
+        }
+    }
+
+    for (int k=0; k<M; k++) {
+        for (int i=0; i<M; i++) {
+            for (int j=0; j<M; j++) {
+                if (c[i][k] != INF && c[k][j] != INF && c[i][k] + c[k][j] < c[i][j]) {
+                    c[i][j] = c[i][k] + c[k][j];
+                    n[i][j] = n[i][k];
+                }
+            }
+        }
+    }
+
+    if (c[src][dest] == INF) {
+        cout << "No path exists from " << g.nodes[src] << " to " << g.nodes[dest] << ".\n";
+    } else {
+        cout << "Lowest cost from " << g.nodes[src] << " to " << g.nodes[dest] << ": " << c[src][dest] << "\n";
+        cout << "Path: ";
+        int u = src;
+        while (u != dest) {
+            cout << g.nodes[u] << " -> ";
+            u = n[u][dest];
+            if (u == -1) {
+                cout << "No path available.\n";
+                return;
+            }
+        }
+        cout << g.nodes[dest] << "\n";
+    }
+}
+
+int main() {
+    string transport;
+    cout << "Enter mode of transport (AEROPLANE, BUS, TRAIN): ";
+    cin >> transport;
+
+    Graph g;
+
+    if (transport == "AEROPLANE") {
+        initializeGraph(g, "data_plane.txt");
+    } else if (transport == "BUS") {
+        initializeGraph(g, "data_bus.txt");
+    } else if (transport == "TRAIN") {
+        initializeGraph(g, "graph.txt");
+    } else {
+        cout << "Invalid Mode of Transport";
+        exit(0);
+    }
+
+    string start, end;
+    cout << "Enter starting city: ";
+    cin >> start;
+    cout << "Enter destination city: ";
+    cin >> end;
+
+    int startIndex = findIndex(g, start);
+    int endIndex = findIndex(g, end);
+
+    if (startIndex == -1 || endIndex == -1) {
+        cout << "Invalid city name." << endl;
+        return 1;
+    }
+    
+    cout<<"\n";
+    dijkstra(g, startIndex, endIndex);
+    cout<<"\n";
+    bellmanFord(g, startIndex, endIndex);
+    cout<<"\n";
+    floydWarshall(g, startIndex, endIndex);
+    cout<<"\n";
+}
